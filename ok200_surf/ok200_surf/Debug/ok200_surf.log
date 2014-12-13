@@ -1,0 +1,25 @@
+﻿2014/12/13 17:28:52 にビルドを開始しました。
+     1>ノード 2 上のプロジェクト "c:\Users\Wake\documents\visual studio 2010\Projects\ok200_surf\ok200_surf\ok200_surf.vcxproj" (build ターゲット)。
+     1>InitializeBuildStatus:
+         "Debug\ok200_surf.unsuccessfulbuild" のタッチ タスクを実行しています。
+       ClCompile:
+         すべての出力が最新のものです。
+       ManifestResourceCompile:
+         すべての出力が最新のものです。
+       Link:
+         c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"c:\users\wake\documents\visual studio 2010\Projects\ok200_surf\Debug\ok200_surf.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /ManifestFile:"Debug\ok200_surf.exe.intermediate.manifest" /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /DEBUG /PDB:"c:\users\wake\documents\visual studio 2010\Projects\ok200_surf\Debug\ok200_surf.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"c:\users\wake\documents\visual studio 2010\Projects\ok200_surf\Debug\ok200_surf.lib" /MACHINE:X86 Debug\ok200_surf.exe.embed.manifest.res
+         Debug\main.obj
+       Manifest:
+         C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\bin\mt.exe /nologo /verbose /out:"Debug\ok200_surf.exe.embed.manifest" /manifest Debug\ok200_surf.exe.intermediate.manifest
+         すべての出力が最新のものです。
+       LinkEmbedManifest:
+         すべての出力が最新のものです。
+         ok200_surf.vcxproj -> c:\users\wake\documents\visual studio 2010\Projects\ok200_surf\Debug\ok200_surf.exe
+       FinalizeBuildStatus:
+         ファイル "Debug\ok200_surf.unsuccessfulbuild" を削除しています。
+         "Debug\ok200_surf.lastbuildstate" のタッチ タスクを実行しています。
+     1>プロジェクト "c:\Users\Wake\documents\visual studio 2010\Projects\ok200_surf\ok200_surf\ok200_surf.vcxproj" (build ターゲット) のビルドが完了しました。
+
+ビルドに成功しました。
+
+経過時間 00:00:00.87
