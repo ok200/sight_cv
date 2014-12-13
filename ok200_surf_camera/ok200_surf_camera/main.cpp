@@ -11,7 +11,8 @@
 #include "osc/OscOutboundPacketStream.h"
 #include "ip/UdpSocket.h"
 //for video
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp> /
 
 #define ADDRESS "127.0.0.1"
 #define PORT 7000
@@ -24,12 +25,13 @@ using namespace cv;
 int main(int argc, char** argv) {
 	//arguments:cv
 	Mat colorImage;
+	Mat colorImage_beforeresize;
 	Mat grayImage;
 	vector<KeyPoint> kp_vec;
 	vector<float> desc_vec;
 	//arguments:osc
 	UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, PORT ) );
- 
+
 	//frag: video:true
 	bool isvideo=false;
 	// load mp4 file
@@ -44,8 +46,10 @@ int main(int argc, char** argv) {
 		cerr << "cannot find camera. Load video" << endl;
 		isvideo=true;
 		//動画の読み込み
-        video.open("video.avi");
-		if(!video.isOpened()) return -1;
+        //video.open("./video.avi");
+		//video >> colorImage;
+		cv::VideoCapture cap("sample.avi");
+		if(!cap.isOpened()) return -1;
 
 	}
 
@@ -77,9 +81,11 @@ int main(int argc, char** argv) {
 				return 0;
 			}
 		}else{
-        capture >> colorImage;
+        capture >> colorImage_beforeresize;
 		}
-        //imshow("SURF", colorImage);
+		//resize
+		resize(colorImage_beforeresize, colorImage, cv::Size(320, 240),INTER_LINEAR);
+        
         cvtColor(colorImage, grayImage, CV_BGR2GRAY);
         SURF calc_surf = SURF(1000,2,2,true);
         calc_surf(grayImage, Mat(), kp_vec, desc_vec);
@@ -117,24 +123,29 @@ int main(int argc, char** argv) {
 				return 0;
 			}
 		}else{
-        capture >> colorImage;
+        capture >> colorImage_beforeresize;
 		}
+		//resize
+		resize(colorImage_beforeresize, colorImage, cv::Size(320, 240),INTER_LINEAR);
         cvtColor(colorImage, grayImage, CV_BGR2GRAY);
         SURF calc_surf = SURF(2000,2,2,true);
         
         calc_surf(grayImage, Mat(), kp_vec, desc_vec);
-        cout << "Image Keypoints: " << kp_vec.size() << endl;
+        //cout << "Image Keypoints: " << kp_vec.size() << endl;
         vector<KeyPoint>::iterator it = kp_vec.begin(), it_end = kp_vec.end();
         int j = 0;
 
 		//write down descriptor:header
-		char buffer[OUTPUT_BUFFER_SIZE];
-		osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
+		//char buffer[OUTPUT_BUFFER_SIZE];
+		int bufsize=36+28+(int)kp_vec.size()*30;//36+28: defaultcharacter 30: average buf per a query
+		char* buffer=new char[ bufsize];
+		//osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
+		osc::OutboundPacketStream p( buffer,  bufsize );
+
 		p << osc::BeginBundleImmediate
 			<< osc::BeginMessage( "/frame" ) 
 			<< (int)kp_vec.size();// << osc::EndMessage;
 		//p << osc::BeginMessage( "/data" );
-
 
         for(; it!=it_end; ++it) {
             cv::Mat m1(1, DIM, CV_32FC1);
@@ -145,7 +156,7 @@ int main(int argc, char** argv) {
             cv::Mat result(1, DIM, CV_32FC1);
             // プロジェクション
             result = pca.project(m1);
-            cout << fixed << ((float*)result.data)[0] << endl;
+            //cout << fixed << ((float*)result.data)[0] << endl;
             
             circle(colorImage, Point(it->pt.x, it->pt.y),
                    saturate_cast<int>(it->size*0.25), Scalar(
@@ -167,7 +178,6 @@ int main(int argc, char** argv) {
 			//p <<bgr[0];
 			//point vlaues
 			p<< (float)it->pt.x<<(float)it->pt.y; 
-
             j += 1;
         }
         imshow("SURF", colorImage);
@@ -176,7 +186,8 @@ int main(int argc, char** argv) {
 		p << osc::EndMessage
 			<< osc::EndBundle;
 		transmitSocket.Send( p.Data(), p.Size() );
-
+		//cout<<(p.Size()-36-28)/(int)kp_vec.size()<<endl;
+		cout<< bufsize-p.Size()<<endl;
         int key = cvWaitKey(30);
         if (key == 27) {
             break;
@@ -186,6 +197,3 @@ int main(int argc, char** argv) {
     
     return 0;
 }
-
-
-
