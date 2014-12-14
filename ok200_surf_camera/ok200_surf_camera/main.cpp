@@ -159,7 +159,12 @@ int main(int argc, char* argv[])
 			}
 		}else{
         capture >> colorImage_beforeresize;
+			if(capture.isOpened()==NULL){
+				cerr << "camera error"<<endl;
+				cvWaitKey(0);
+			}
 		}
+		cout<<"debug1"<<endl;
 		//resize
 		resize(colorImage_beforeresize, colorImage, cv::Size(320, 240),INTER_LINEAR);
         cvtColor(colorImage, grayImage, CV_BGR2GRAY);
@@ -168,17 +173,17 @@ int main(int argc, char* argv[])
         calc_surf(grayImage, Mat(), kp_vec, desc_vec);
 		//sort according to size
 		vector<KeyPoint> kp_vec_sorted=kp_vec;
-		//sort(kp_vec_sorted.begin(),kp_vec_sorted.end(),compare_response);
-		int threshold=0;
-		try{
-			//threshold=kp_vec_sorted.at(9).size;
-			throw "Exception : Kitty on your lap\n";
-		}catch(char *str){
-			threshold=kp_vec_sorted.at((int)kp_vec_sorted.size()-1).size;
-		}
-		//cout<<kp_vec.at((int)kp_vec.size()-1).size<<endl;
-		//cout<<(int)kp_vec.size()<<endl;
+		sort(kp_vec_sorted.begin(),kp_vec_sorted.end(),compare_response);
+		int threshould=0;
 
+		if((int)kp_vec_sorted.size()>9){
+			threshould=kp_vec_sorted.at(9).size;
+			//cout<<"original"<<kp_vec.at(0).size<<" "<<kp_vec.at(1).size<<" "<<kp_vec.at(2).size<<endl;
+			//cout<<kp_vec_sorted.at(0).size<<" "<<kp_vec_sorted.at(1).size<<" "<<kp_vec_sorted.at(2).size<<endl;
+		}
+
+
+		cout<<"debug2"<<endl;
 
         vector<KeyPoint>::iterator it = kp_vec.begin(), it_end = kp_vec.end();
         int j = 0;
@@ -196,6 +201,7 @@ int main(int argc, char* argv[])
 			<< min((int)kp_vec.size(),(int)SENTPOINTS_NUM);
 
 
+		int counter=0;
         for(; it!=it_end; ++it) {
             cv::Mat m1(1, DIM, CV_32FC1);
             // m1 Mat に移す
@@ -216,7 +222,7 @@ int main(int argc, char* argv[])
             // ここで ((float*)result.data)[0]) でPCA射影結果の 0 番目にアクセスできる (値域は -1 〜 1)
 
 			//write down descriptor:data
-			if(j<SENTPOINTS_NUM){
+			if((counter<min((int)kp_vec.size(),(int)SENTPOINTS_NUM))&&(it->size>=threshould)){
 			//intensity values
 			p <<it->size;
 			//feature values
@@ -230,16 +236,20 @@ int main(int argc, char* argv[])
 			cv::Mat3b dotImg = colorImage;
 			cv::Vec3b bgr = dotImg(cv::Point(it->pt.x,it->pt.y));
 
+			//point vlaues
+			p<< (float)it->pt.x<<(float)it->pt.y; 
+			counter+=1;
 			//cv::Vec3b bgr = colorImage.at<cv::Vec3b>((int)it->pt.x,(int)it->pt.y);
 			p << (float)bgr[2]<<(float)bgr[1]<<(float)bgr[0];
 			//p <<bgr[0];
-			//point vlaues
-			p<< (float)it->pt.x<<(float)it->pt.y; 
+
+
 			}
             j += 1;
         }
         imshow("SURF", colorImage);
 
+		cout<<"debug3"<<endl;
 		//write down descriptor:ternminal
 		p << osc::EndMessage
 			<< osc::EndBundle;
@@ -251,14 +261,19 @@ int main(int argc, char* argv[])
 		GetSystemTime(&time);
 		frameduration=1000*time.wSecond+time.wMilliseconds-lastframe_msec;
 		if(frameduration<SEND_DURATION){
-			Sleep(SEND_DURATION-frameduration);
+			cout<<SEND_DURATION-frameduration<<endl;
+			if(SEND_DURATION-frameduration>200){//たまにめちゃ大きな値が入ることがある
+				Sleep(200);
+			}else{
+				Sleep(SEND_DURATION-frameduration);
+			}
 		}
 
         int key = cvWaitKey(1);
         if (key == 27) {
             break;
         }
-		//cout<<1000*time.wSecond+time.wMilliseconds<<endl;
+		cout<<1000*time.wSecond+time.wMilliseconds<<endl;
     }
     
     
