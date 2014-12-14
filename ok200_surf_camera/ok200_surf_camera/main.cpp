@@ -168,14 +168,20 @@ int main(int argc, char* argv[])
         calc_surf(grayImage, Mat(), kp_vec, desc_vec);
 		//sort according to size
 		vector<KeyPoint> kp_vec_sorted=kp_vec;
-		//sort(kp_vec_sorted.begin(),kp_vec_sorted.end(),compare_response);
-		int threshold=0;
-		try{
-			//threshold=kp_vec_sorted.at(9).size;
-			throw "Exception : Kitty on your lap\n";
-		}catch(char *str){
-			threshold=kp_vec_sorted.at((int)kp_vec_sorted.size()-1).size;
+		sort(kp_vec_sorted.begin(),kp_vec_sorted.end(),compare_response);
+		int threshould=0;
+		if((int)kp_vec_sorted.size()>10){
+			//threshould=kp_vec_sorted.at(9).size;
+			cout<<"original"<<kp_vec.at(0).size<<" "<<kp_vec.at(1).size<<" "<<kp_vec.at(2).size<<endl;
+			cout<<kp_vec_sorted.at(0).size<<" "<<kp_vec_sorted.at(1).size<<" "<<kp_vec_sorted.at(2).size<<endl;
 		}
+
+		//try{
+		//	//threshold=kp_vec_sorted.at(9).size;
+		//	throw "Exception : Kitty on your lap\n";
+		//}catch(char *str){
+		//	//threshold=kp_vec_sorted.at((int)kp_vec_sorted.size()-1).size;
+		//}
 		//cout<<kp_vec.at((int)kp_vec.size()-1).size<<endl;
 		//cout<<(int)kp_vec.size()<<endl;
 
@@ -216,7 +222,7 @@ int main(int argc, char* argv[])
             // ここで ((float*)result.data)[0]) でPCA射影結果の 0 番目にアクセスできる (値域は -1 〜 1)
 
 			//write down descriptor:data
-			if(j<SENTPOINTS_NUM){
+			if((j<min((int)kp_vec.size(),(int)SENTPOINTS_NUM))&&(it->size>=threshould)){
 			//intensity values
 			p <<it->size;
 			//feature values
