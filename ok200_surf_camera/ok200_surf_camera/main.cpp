@@ -1,16 +1,25 @@
-// ok200.cpp : コンソール アプリケーションのエントリ ポイントを定義します。
-//
-
-//stdafx.h is needed to capture video using opencv
+﻿//win以外でコンパイルするときは次の行をコメントアウトしてください
 #include "stdafx.h"
+#ifdef TARGET_OS_MAC
+#include <unistd.h>
+#include <sys/time.h>
+#elif defined __linux__
+// Linux Includes Here
+#error Can't be compiled on Linux yet
+#elif defined WIN32 || defined _WIN64
+// Windows Includes Here
+//stdafx.h is needed to capture video using opencv
 #include <iostream>
 #include <string>
+//algorithm is needed to use min()
 #include <algorithm>
+//windows is needed to use time function
 #include <windows.h>
+//windows is needed to use sort function of vector
 #include <concrt.h>
 #include <vector>
 
-
+//opencv library:1.  add include directory (property setting) 2. add library directory (property setting)
 #include <opencv2/opencv.hpp>
 #include <opencv2/opencv_lib.hpp>
 //for surf http://y-takeda.tumblr.com/post/41255703041/opencv-sift-surf
@@ -18,11 +27,17 @@
 //#include <opencv/cv.h>
 //#include <opencv/highgui.h>
 //for soc http://www.naturalsoftware.jp/blog/7371
+//osc library:1.  add include directory (property setting) 2. add library directory (additional library directory in linker setting)
+//3: add ws2_32.lib, winmm.lib, oscpack.lib to additional dependent file (additional library directory in linker setting)
 #include "osc/OscOutboundPacketStream.h"
 #include "ip/UdpSocket.h"
 //for video
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#endif
+ 
+//information about get-time
+//http://brian.pontarelli.com/2009/01/05/getting-the-current-system-time-in-milliseconds-with-c/
 
 #define ADDRESS "192.168.100.101"
 #define PORT 12000
@@ -31,6 +46,7 @@
 #define OUTPUT_BUFFER_SIZE 10000//588//16384
 #define SENTPOINTS_NUM 10
 #define SEND_DURATION 200
+#define LOADED_FILE_FPS 30
 
 // response comparison, for list sorting
 bool compare_response(cv::KeyPoint first, cv::KeyPoint second)
@@ -38,6 +54,27 @@ bool compare_response(cv::KeyPoint first, cv::KeyPoint second)
   if (first.size > second.size) return true;
   else return false;
 }
+
+long getmillisec(){
+    long millis;
+#ifdef TARGET_OS_MAC
+#include <sys/time.h>
+timeval time;
+gettimeofday(&time, NULL);
+millis = (time.tv_sec * 1000) + (time.tv_usec / 1000);
+#elif defined __linux__
+// Linux Includes Here
+#error Can't be compiled on Linux yet
+#elif defined WIN32 || defined _WIN64
+SYSTEMTIME time;
+GetSystemTime(&time);
+millis = (time.wSecond * 1000) + time.wMilliseconds;
+// Windows Includes Here
+#endif
+    return millis;
+}
+
+
 
 using namespace std;
 using namespace cv;
@@ -61,19 +98,19 @@ int main(int argc, char* argv[])
 	VideoCapture video;
 	char imagename[30];
 	//arguments:time
-	SYSTEMTIME time;
-	int lastframe_msec=0;
-	int frameduration=0;
+	long lastframe_msec=0;
+	long frameduration=0;
+	int skip_frame=(int)(LOADED_FILE_FPS/(int)(1000/200));
 
 	if(argc>1){
 		strcpy(imagename,  argv[1]);}
 	else{
-		strcpy(imagename, "fushimi.avi");
+		strcpy(imagename, "MAH06380_ok.avi");
 	}
 	cout<<imagename<<endl;
 	// カメラを初期化
 	VideoCapture capture(0);
-	if(capture.isOpened()==NULL){
+	if(!capture.isOpened()){
 		cerr << "cannot find camera. Load video" << endl;
 		isvideo=true;
 		//動画の読み込み
@@ -84,7 +121,6 @@ int main(int argc, char* argv[])
 	}
 
 	// ウィンドウを生成
-	//cvNamedWindow("SURF");
 	namedWindow("SURF",CV_WINDOW_AUTOSIZE);
 	   
     // PCAの準備
@@ -103,18 +139,27 @@ int main(int argc, char* argv[])
     
     // 3000 特徴点分のデータが溜まるまで待つ
     while (true) {
+		cout<<skip_frame<<endl;
         num_frames += 1;
 		if(isvideo){
+			//5フレーム飛ばして6フレーム目を取る（5Hzで再生していて、もとの動画が30FPS）
+			for(int frame=1;frame<skip_frame;frame++){
 			video >> colorImage_beforeresize;
+			}
 			//フレームが空か、ボタンが押された時か一周したときに出る。
 			if(colorImage_beforeresize.empty() || waitKey(30) >= 0 || video.get(CV_CAP_PROP_POS_AVI_RATIO) == 1){
 				return 0;
 			}
 		}else{
-        capture >> colorImage_beforeresize;
+			capture >> colorImage_beforeresize;
+			if(capture.isOpened()==NULL){
+				cerr << "camera error"<<endl;
+				cvWaitKey(0);
+			}
 		}
 		//resize
 		resize(colorImage_beforeresize, colorImage, cv::Size(320, 240),INTER_LINEAR);
+		//resize(colorImage_beforeresize, colorImage, cv::Size(640, 480),INTER_LINEAR);
         
         cvtColor(colorImage, grayImage, CV_BGR2GRAY);
         SURF calc_surf = SURF(1000,2,2,true);
@@ -146,22 +191,30 @@ int main(int argc, char* argv[])
     pca_result=pca.project(pca_src);
     
 
-	//sending
+
 
     while (true) {
-		GetSystemTime(&time);
-		lastframe_msec=1000*time.wSecond+time.wMilliseconds;
+		lastframe_msec=getmillisec();
 		if(isvideo){
+			//5フレーム飛ばして6フレーム目を取る（5Hzで再生していて、もとの動画が30FPS）
+			for(int frame=1;frame<skip_frame;frame++){
 			video >> colorImage_beforeresize;
+			}
 			//フレームが空か、ボタンが押された時か一周したときに出る。
 			if(colorImage_beforeresize.empty() || waitKey(30) >= 0 || video.get(CV_CAP_PROP_POS_AVI_RATIO) == 1){
 				return 0;
 			}
 		}else{
         capture >> colorImage_beforeresize;
+			if(capture.isOpened()==NULL){
+				cerr << "camera error"<<endl;
+				cvWaitKey(0);
+			}
 		}
+		//cout<<"debug1"<<endl;
 		//resize
 		resize(colorImage_beforeresize, colorImage, cv::Size(320, 240),INTER_LINEAR);
+		//resize(colorImage_beforeresize, colorImage, cv::Size(640, 480),INTER_LINEAR);
         cvtColor(colorImage, grayImage, CV_BGR2GRAY);
         SURF calc_surf = SURF(2000,2,2,true);
         
@@ -170,21 +223,15 @@ int main(int argc, char* argv[])
 		vector<KeyPoint> kp_vec_sorted=kp_vec;
 		sort(kp_vec_sorted.begin(),kp_vec_sorted.end(),compare_response);
 		int threshould=0;
-		if((int)kp_vec_sorted.size()>10){
-			//threshould=kp_vec_sorted.at(9).size;
-			cout<<"original"<<kp_vec.at(0).size<<" "<<kp_vec.at(1).size<<" "<<kp_vec.at(2).size<<endl;
-			cout<<kp_vec_sorted.at(0).size<<" "<<kp_vec_sorted.at(1).size<<" "<<kp_vec_sorted.at(2).size<<endl;
+
+		if((int)kp_vec_sorted.size()>9){
+			threshould=kp_vec_sorted.at(9).size;
+			//cout<<"original"<<kp_vec.at(0).size<<" "<<kp_vec.at(1).size<<" "<<kp_vec.at(2).size<<endl;
+			//cout<<kp_vec_sorted.at(0).size<<" "<<kp_vec_sorted.at(1).size<<" "<<kp_vec_sorted.at(2).size<<endl;
 		}
 
-		//try{
-		//	//threshold=kp_vec_sorted.at(9).size;
-		//	throw "Exception : Kitty on your lap\n";
-		//}catch(char *str){
-		//	//threshold=kp_vec_sorted.at((int)kp_vec_sorted.size()-1).size;
-		//}
-		//cout<<kp_vec.at((int)kp_vec.size()-1).size<<endl;
-		//cout<<(int)kp_vec.size()<<endl;
 
+		//cout<<"debug2"<<endl;
 
         vector<KeyPoint>::iterator it = kp_vec.begin(), it_end = kp_vec.end();
         int j = 0;
@@ -202,6 +249,7 @@ int main(int argc, char* argv[])
 			<< min((int)kp_vec.size(),(int)SENTPOINTS_NUM);
 
 
+		int counter=0;
         for(; it!=it_end; ++it) {
             cv::Mat m1(1, DIM, CV_32FC1);
             // m1 Mat に移す
@@ -222,7 +270,7 @@ int main(int argc, char* argv[])
             // ここで ((float*)result.data)[0]) でPCA射影結果の 0 番目にアクセスできる (値域は -1 〜 1)
 
 			//write down descriptor:data
-			if((j<min((int)kp_vec.size(),(int)SENTPOINTS_NUM))&&(it->size>=threshould)){
+			if((counter<min((int)kp_vec.size(),(int)SENTPOINTS_NUM))&&(it->size>=threshould)){
 			//intensity values
 			p <<it->size;
 			//feature values
@@ -236,16 +284,20 @@ int main(int argc, char* argv[])
 			cv::Mat3b dotImg = colorImage;
 			cv::Vec3b bgr = dotImg(cv::Point(it->pt.x,it->pt.y));
 
+			//point vlaues
+			p<< (float)it->pt.x<<(float)it->pt.y; 
+			counter+=1;
 			//cv::Vec3b bgr = colorImage.at<cv::Vec3b>((int)it->pt.x,(int)it->pt.y);
 			p << (float)bgr[2]<<(float)bgr[1]<<(float)bgr[0];
 			//p <<bgr[0];
-			//point vlaues
-			p<< (float)it->pt.x<<(float)it->pt.y; 
+
+
 			}
             j += 1;
         }
         imshow("SURF", colorImage);
 
+		//cout<<"debug3"<<endl;
 		//write down descriptor:ternminal
 		p << osc::EndMessage
 			<< osc::EndBundle;
@@ -254,10 +306,14 @@ int main(int argc, char* argv[])
 		//cout<<p.Size()<<endl;
 
 		//time control
-		GetSystemTime(&time);
-		frameduration=1000*time.wSecond+time.wMilliseconds-lastframe_msec;
+		frameduration=getmillisec()-lastframe_msec;
 		if(frameduration<SEND_DURATION){
-			Sleep(SEND_DURATION-frameduration);
+			//cout<<SEND_DURATION-frameduration<<endl;
+			if(SEND_DURATION-frameduration>200){//たまにめちゃ大きな値が入ることがある intの値があふれることが原因? lastframe_msecとframedurationをlong型に変更した
+				Sleep(200);
+			}else{
+				Sleep((unsigned int)SEND_DURATION-frameduration);
+			}
 		}
 
         int key = cvWaitKey(1);
