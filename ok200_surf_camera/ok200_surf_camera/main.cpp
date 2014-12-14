@@ -1,4 +1,4 @@
-﻿// ok200.cpp : コンソール アプリケーションのエントリ ポイントを定義します。
+// ok200.cpp : コンソール アプリケーションのエントリ ポイントを定義します。
 //
 
 //stdafx.h is needed to capture video using opencv
