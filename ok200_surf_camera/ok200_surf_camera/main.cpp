@@ -1,6 +1,16 @@
-﻿
+﻿// ok200.cpp : コンソール アプリケーションのエントリ ポイントを定義します。
+//
+
+//stdafx.h is needed to capture video using opencv
+#include "stdafx.h"
 #include <iostream>
 #include <string>
+#include <algorithm>
+#include <windows.h>
+#include <concrt.h>
+#include <vector>
+
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/opencv_lib.hpp>
 //for surf http://y-takeda.tumblr.com/post/41255703041/opencv-sift-surf
@@ -12,44 +22,64 @@
 #include "ip/UdpSocket.h"
 //for video
 #include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp> /
+#include <opencv2/highgui/highgui.hpp>
 
-#define ADDRESS "127.0.0.1"
-#define PORT 7000
-#define OUTPUT_BUFFER_SIZE 16384
+#define ADDRESS "192.168.100.101"
+#define PORT 12000
+//#define ADDRESS "127.0.0.1"
+//#define PORT 7000
+#define OUTPUT_BUFFER_SIZE 10000//588//16384
+#define SENTPOINTS_NUM 10
+#define SEND_DURATION 200
+
+// response comparison, for list sorting
+bool compare_response(cv::KeyPoint first, cv::KeyPoint second)
+{
+  if (first.size > second.size) return true;
+  else return false;
+}
 
 using namespace std;
 using namespace cv;
 
 
-int main(int argc, char** argv) {
+//http://iroirous.blog.fc2.com/blog-entry-110.html
+//int _tmain(int argc, char* argv[])
+int main(int argc, char* argv[])
+{
 	//arguments:cv
 	Mat colorImage;
 	Mat colorImage_beforeresize;
 	Mat grayImage;
 	vector<KeyPoint> kp_vec;
+
 	vector<float> desc_vec;
 	//arguments:osc
 	UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, PORT ) );
-
-	//frag: video:true
+	//arguments:video
 	bool isvideo=false;
-	// load mp4 file
 	VideoCapture video;
+	char imagename[30];
+	//arguments:time
+	SYSTEMTIME time;
+	int lastframe_msec=0;
+	int frameduration=0;
 
-
-	//CvCapture* capture;
+	if(argc>1){
+		strcpy(imagename,  argv[1]);}
+	else{
+		strcpy(imagename, "fushimi.avi");
+	}
+	cout<<imagename<<endl;
 	// カメラを初期化
 	VideoCapture capture(0);
-
 	if(capture.isOpened()==NULL){
 		cerr << "cannot find camera. Load video" << endl;
 		isvideo=true;
 		//動画の読み込み
-        //video.open("./video.avi");
-		//video >> colorImage;
-		cv::VideoCapture cap("sample.avi");
-		if(!cap.isOpened()) return -1;
+
+        video.open(imagename);
+		if(!video.isOpened()) return -1;
 
 	}
 
@@ -75,9 +105,9 @@ int main(int argc, char** argv) {
     while (true) {
         num_frames += 1;
 		if(isvideo){
-			video >> colorImage;
+			video >> colorImage_beforeresize;
 			//フレームが空か、ボタンが押された時か一周したときに出る。
-			if(colorImage.empty() || waitKey(30) >= 0 || video.get(CV_CAP_PROP_POS_AVI_RATIO) == 1){
+			if(colorImage_beforeresize.empty() || waitKey(30) >= 0 || video.get(CV_CAP_PROP_POS_AVI_RATIO) == 1){
 				return 0;
 			}
 		}else{
@@ -115,11 +145,16 @@ int main(int argc, char** argv) {
     cv::PCA pca(pca_src, cv::Mat(), CV_PCA_DATA_AS_ROW, 0);
     pca_result=pca.project(pca_src);
     
+
+	//sending
+
     while (true) {
+		GetSystemTime(&time);
+		lastframe_msec=1000*time.wSecond+time.wMilliseconds;
 		if(isvideo){
-			video >> colorImage;
+			video >> colorImage_beforeresize;
 			//フレームが空か、ボタンが押された時か一周したときに出る。
-			if(colorImage.empty() || waitKey(30) >= 0 || video.get(CV_CAP_PROP_POS_AVI_RATIO) == 1){
+			if(colorImage_beforeresize.empty() || waitKey(30) >= 0 || video.get(CV_CAP_PROP_POS_AVI_RATIO) == 1){
 				return 0;
 			}
 		}else{
@@ -131,21 +166,35 @@ int main(int argc, char** argv) {
         SURF calc_surf = SURF(2000,2,2,true);
         
         calc_surf(grayImage, Mat(), kp_vec, desc_vec);
-        //cout << "Image Keypoints: " << kp_vec.size() << endl;
+		//sort according to size
+		vector<KeyPoint> kp_vec_sorted=kp_vec;
+		//sort(kp_vec_sorted.begin(),kp_vec_sorted.end(),compare_response);
+		int threshold=0;
+		try{
+			//threshold=kp_vec_sorted.at(9).size;
+			throw "Exception : Kitty on your lap\n";
+		}catch(char *str){
+			threshold=kp_vec_sorted.at((int)kp_vec_sorted.size()-1).size;
+		}
+		//cout<<kp_vec.at((int)kp_vec.size()-1).size<<endl;
+		//cout<<(int)kp_vec.size()<<endl;
+
+
         vector<KeyPoint>::iterator it = kp_vec.begin(), it_end = kp_vec.end();
         int j = 0;
 
 		//write down descriptor:header
-		//char buffer[OUTPUT_BUFFER_SIZE];
-		int bufsize=36+28+(int)kp_vec.size()*30;//36+28: defaultcharacter 30: average buf per a query
-		char* buffer=new char[ bufsize];
-		//osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
-		osc::OutboundPacketStream p( buffer,  bufsize );
+		char buffer[OUTPUT_BUFFER_SIZE];
+		//int bufsize=36+28+(int)kp_vec.size()*30;//36+28: defaultcharacter 30: average buf per a query
+		//char* buffer=new char[ bufsize];
+		osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
+		//osc::OutboundPacketStream p( buffer,  bufsize );
+
 
 		p << osc::BeginBundleImmediate
 			<< osc::BeginMessage( "/frame" ) 
-			<< (int)kp_vec.size();// << osc::EndMessage;
-		//p << osc::BeginMessage( "/data" );
+			<< min((int)kp_vec.size(),(int)SENTPOINTS_NUM);
+
 
         for(; it!=it_end; ++it) {
             cv::Mat m1(1, DIM, CV_32FC1);
@@ -167,8 +216,16 @@ int main(int argc, char** argv) {
             // ここで ((float*)result.data)[0]) でPCA射影結果の 0 番目にアクセスできる (値域は -1 〜 1)
 
 			//write down descriptor:data
+			if(j<SENTPOINTS_NUM){
+			//intensity values
+			p <<it->size;
 			//feature values
-			p << floor(((float*)result.data)[0]);
+			p << ((float*)result.data)[0]
+				<< ((float*)result.data)[1]
+				<< ((float*)result.data)[2]
+				<< ((float*)result.data)[3]
+				<< ((float*)result.data)[4]
+				<< ((float*)result.data)[5];
 			//rgb values
 			cv::Mat3b dotImg = colorImage;
 			cv::Vec3b bgr = dotImg(cv::Point(it->pt.x,it->pt.y));
@@ -178,6 +235,7 @@ int main(int argc, char** argv) {
 			//p <<bgr[0];
 			//point vlaues
 			p<< (float)it->pt.x<<(float)it->pt.y; 
+			}
             j += 1;
         }
         imshow("SURF", colorImage);
@@ -187,13 +245,24 @@ int main(int argc, char** argv) {
 			<< osc::EndBundle;
 		transmitSocket.Send( p.Data(), p.Size() );
 		//cout<<(p.Size()-36-28)/(int)kp_vec.size()<<endl;
-		cout<< bufsize-p.Size()<<endl;
-        int key = cvWaitKey(30);
+		//cout<<p.Size()<<endl;
+
+		//time control
+		GetSystemTime(&time);
+		frameduration=1000*time.wSecond+time.wMilliseconds-lastframe_msec;
+		if(frameduration<SEND_DURATION){
+			Sleep(SEND_DURATION-frameduration);
+		}
+
+        int key = cvWaitKey(1);
         if (key == 27) {
             break;
         }
+		//cout<<1000*time.wSecond+time.wMilliseconds<<endl;
     }
     
     
     return 0;
 }
+
+
