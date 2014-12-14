@@ -2,44 +2,35 @@
 //
 
 //stdafx.h is needed to capture video using opencv
+#include "stdafx.h"
 #include <iostream>
 #include <string>
 #include <algorithm>
-#include <vector>
-
-#include <unistd.h>
-
-#ifdef TARGET_OS_MAC
-#include <sys/time.h>
-#elif defined __linux__
-// Linux Includes Here
-#error Can't be compiled on Linux yet
-#elif defined WIN32 || defined _WIN64
-// Windows Includes Here
-#include "stdafx.h"
 #include <windows.h>
 #include <concrt.h>
-#include <opencv2/opencv_lib.hpp>
-#endif
+#include <vector>
 
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/opencv_lib.hpp>
 //for surf http://y-takeda.tumblr.com/post/41255703041/opencv-sift-surf
-#include <opencv2/nonfree/features2d.hpp>
+#include <opencv2\nonfree\features2d.hpp>
+//#include <opencv/cv.h>
+//#include <opencv/highgui.h>
 //for soc http://www.naturalsoftware.jp/blog/7371
-#include <oscpack/osc/OscOutboundPacketStream.h>
-#include <oscpack/ip/UdpSocket.h>
+#include "osc/OscOutboundPacketStream.h"
+#include "ip/UdpSocket.h"
 //for video
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
 #define ADDRESS "192.168.100.101"
 #define PORT 12000
+//#define ADDRESS "127.0.0.1"
+//#define PORT 7000
 #define OUTPUT_BUFFER_SIZE 10000//588//16384
 #define SENTPOINTS_NUM 10
 #define SEND_DURATION 200
-
-// http://brian.pontarelli.com/2009/01/05/getting-the-current-system-time-in-milliseconds-with-c/
 
 // response comparison, for list sorting
 bool compare_response(cv::KeyPoint first, cv::KeyPoint second)
@@ -50,25 +41,6 @@ bool compare_response(cv::KeyPoint first, cv::KeyPoint second)
 
 using namespace std;
 using namespace cv;
-
-long getmillisec(){
-    long millis;
-#ifdef TARGET_OS_MAC
-#include <sys/time.h>
-timeval time;
-gettimeofday(&time, NULL);
-millis = (time.tv_sec * 1000) + (time.tv_usec / 1000);
-#elif defined __linux__
-// Linux Includes Here
-#error Can't be compiled on Linux yet
-#elif defined WIN32 || defined _WIN64
-SYSTEMTIME time;
-GetSystemTime(&time);
-millis = (time.wSeconds * 1000) + time.wMilliseconds;
-// Windows Includes Here
-#endif
-    return millis;
-}
 
 
 //http://iroirous.blog.fc2.com/blog-entry-110.html
@@ -88,9 +60,10 @@ int main(int argc, char* argv[])
 	bool isvideo=false;
 	VideoCapture video;
 	char imagename[30];
-    long time;
+	//arguments:time
+	SYSTEMTIME time;
 	int lastframe_msec=0;
-	long frameduration=0;
+	int frameduration=0;
 
 	if(argc>1){
 		strcpy(imagename,  argv[1]);}
@@ -100,7 +73,7 @@ int main(int argc, char* argv[])
 	cout<<imagename<<endl;
 	// カメラを初期化
 	VideoCapture capture(0);
-	if(!capture.isOpened()){
+	if(capture.isOpened()==NULL){
 		cerr << "cannot find camera. Load video" << endl;
 		isvideo=true;
 		//動画の読み込み
@@ -176,7 +149,8 @@ int main(int argc, char* argv[])
 	//sending
 
     while (true) {
-        lastframe_msec=getmillisec();
+		GetSystemTime(&time);
+		lastframe_msec=1000*time.wSecond+time.wMilliseconds;
 		if(isvideo){
 			video >> colorImage_beforeresize;
 			//フレームが空か、ボタンが押された時か一周したときに出る。
@@ -194,14 +168,20 @@ int main(int argc, char* argv[])
         calc_surf(grayImage, Mat(), kp_vec, desc_vec);
 		//sort according to size
 		vector<KeyPoint> kp_vec_sorted=kp_vec;
-		//sort(kp_vec_sorted.begin(),kp_vec_sorted.end(),compare_response);
-		int threshold=0;
-        try{
-			//threshold=kp_vec_sorted.at(9).size;
-			throw "Exception : Kitty on your lap\n";
-		}catch(char *str){
-			threshold=kp_vec_sorted.at((int)kp_vec_sorted.size()-1).size;
+		sort(kp_vec_sorted.begin(),kp_vec_sorted.end(),compare_response);
+		int threshould=0;
+		if((int)kp_vec_sorted.size()>10){
+			//threshould=kp_vec_sorted.at(9).size;
+			cout<<"original"<<kp_vec.at(0).size<<" "<<kp_vec.at(1).size<<" "<<kp_vec.at(2).size<<endl;
+			cout<<kp_vec_sorted.at(0).size<<" "<<kp_vec_sorted.at(1).size<<" "<<kp_vec_sorted.at(2).size<<endl;
 		}
+
+		//try{
+		//	//threshold=kp_vec_sorted.at(9).size;
+		//	throw "Exception : Kitty on your lap\n";
+		//}catch(char *str){
+		//	//threshold=kp_vec_sorted.at((int)kp_vec_sorted.size()-1).size;
+		//}
 		//cout<<kp_vec.at((int)kp_vec.size()-1).size<<endl;
 		//cout<<(int)kp_vec.size()<<endl;
 
@@ -242,7 +222,7 @@ int main(int argc, char* argv[])
             // ここで ((float*)result.data)[0]) でPCA射影結果の 0 番目にアクセスできる (値域は -1 〜 1)
 
 			//write down descriptor:data
-			if(j<SENTPOINTS_NUM){
+			if((j<min((int)kp_vec.size(),(int)SENTPOINTS_NUM))&&(it->size>=threshould)){
 			//intensity values
 			p <<it->size;
 			//feature values
@@ -273,10 +253,12 @@ int main(int argc, char* argv[])
 		//cout<<(p.Size()-36-28)/(int)kp_vec.size()<<endl;
 		//cout<<p.Size()<<endl;
 
-		frameduration=getmillisec()-lastframe_msec;
+		//time control
+		GetSystemTime(&time);
+		frameduration=1000*time.wSecond+time.wMilliseconds-lastframe_msec;
 		if(frameduration<SEND_DURATION){
-            sleep((unsigned int)(SEND_DURATION-frameduration));
-        }
+			Sleep(SEND_DURATION-frameduration);
+		}
 
         int key = cvWaitKey(1);
         if (key == 27) {
