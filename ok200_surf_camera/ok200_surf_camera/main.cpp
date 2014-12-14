@@ -9,8 +9,9 @@
 
 #include <unistd.h>
 
-#ifdef TARGET_OS_MAC
 #include <sys/time.h>
+
+#ifdef TARGET_OS_MAC
 #elif defined __linux__
 // Linux Includes Here
 #error Can't be compiled on Linux yet
@@ -52,21 +53,9 @@ using namespace std;
 using namespace cv;
 
 long getmillisec(){
-    long millis;
-#ifdef TARGET_OS_MAC
-#include <sys/time.h>
-timeval time;
-gettimeofday(&time, NULL);
-millis = (time.tv_sec * 1000) + (time.tv_usec / 1000);
-#elif defined __linux__
-// Linux Includes Here
-#error Can't be compiled on Linux yet
-#elif defined WIN32 || defined _WIN64
-SYSTEMTIME time;
-GetSystemTime(&time);
-millis = (time.wSeconds * 1000) + time.wMilliseconds;
-// Windows Includes Here
-#endif
+    timeval time;
+    gettimeofday(&time, NULL);
+    long millis = (time.tv_sec * 1000) + (time.tv_usec / 1000);
     return millis;
 }
 
@@ -257,16 +246,17 @@ int main(int argc, char* argv[])
 				<< ((float*)result.data)[2]
 				<< ((float*)result.data)[3]
 				<< ((float*)result.data)[4]
-				<< ((float*)result.data)[5];
+				<< ((float*)result.data)[5
+                                         ];
 			//rgb values
 			cv::Mat3b dotImg = colorImage;
 			cv::Vec3b bgr = dotImg(cv::Point(it->pt.x,it->pt.y));
 
 			//cv::Vec3b bgr = colorImage.at<cv::Vec3b>((int)it->pt.x,(int)it->pt.y);
+            p << (float)it->pt.x<<(float)it->pt.y;
 			p << (float)bgr[2]<<(float)bgr[1]<<(float)bgr[0];
 			//p <<bgr[0];
 			//point vlaues
-			p<< (float)it->pt.x<<(float)it->pt.y; 
 			}
             j += 1;
         }
@@ -280,6 +270,7 @@ int main(int argc, char* argv[])
 		//cout<<p.Size()<<endl;
 
 		frameduration=getmillisec()-lastframe_msec;
+        cout << frameduration;
 		if(frameduration<SEND_DURATION){
             sleep((unsigned int)(SEND_DURATION-frameduration));
         }
