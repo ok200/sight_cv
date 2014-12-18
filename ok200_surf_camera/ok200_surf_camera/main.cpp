@@ -1,16 +1,25 @@
-﻿// ok200.cpp : コンソール アプリケーションのエントリ ポイントを定義します。
-//
-
-//stdafx.h is needed to capture video using opencv
+﻿//win以外でコンパイルするときは次の行をコメントアウトしてください
 #include "stdafx.h"
+#ifdef TARGET_OS_MAC
+#include <unistd.h>
+#include <sys/time.h>
+#elif defined __linux__
+// Linux Includes Here
+#error Can't be compiled on Linux yet
+#elif defined WIN32 || defined _WIN64
+// Windows Includes Here
+//stdafx.h is needed to capture video using opencv
 #include <iostream>
 #include <string>
+//algorithm is needed to use min()
 #include <algorithm>
+//windows is needed to use time function
 #include <windows.h>
+//windows is needed to use sort function of vector
 #include <concrt.h>
 #include <vector>
 
-
+//opencv library:1.  add include directory (property setting) 2. add library directory (property setting)
 #include <opencv2/opencv.hpp>
 #include <opencv2/opencv_lib.hpp>
 //for surf http://y-takeda.tumblr.com/post/41255703041/opencv-sift-surf
@@ -18,11 +27,21 @@
 //#include <opencv/cv.h>
 //#include <opencv/highgui.h>
 //for soc http://www.naturalsoftware.jp/blog/7371
+//osc library:1.  add include directory (property setting) 2. add library directory (additional library directory in linker setting)
+//3: add ws2_32.lib, winmm.lib, oscpack.lib to additional dependent file (additional library directory in linker setting)
 #include "osc/OscOutboundPacketStream.h"
 #include "ip/UdpSocket.h"
 //for video
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+//for face tracking
+#include <opencv2/objdetect/objdetect.hpp>
+#endif
+ 
+
+
+//information about get-time
+//http://brian.pontarelli.com/2009/01/05/getting-the-current-system-time-in-milliseconds-with-c/
 
 #define ADDRESS "192.168.100.101"
 #define PORT 12000
@@ -31,6 +50,9 @@
 #define OUTPUT_BUFFER_SIZE 10000//588//16384
 #define SENTPOINTS_NUM 10
 #define SEND_DURATION 200
+#define LOADED_FILE_FPS 30
+#define WRITEVIDEO
+#define FACEDETECT
 
 // response comparison, for list sorting
 bool compare_response(cv::KeyPoint first, cv::KeyPoint second)
@@ -39,8 +61,52 @@ bool compare_response(cv::KeyPoint first, cv::KeyPoint second)
   else return false;
 }
 
+long getmillisec(){
+    long millis;
+#ifdef TARGET_OS_MAC
+#include <sys/time.h>
+timeval time;
+gettimeofday(&time, NULL);
+millis = (time.tv_sec * 1000) + (time.tv_usec / 1000);
+#elif defined __linux__
+// Linux Includes Here
+#error Can't be compiled on Linux yet
+#elif defined WIN32 || defined _WIN64
+SYSTEMTIME time;
+GetSystemTime(&time);
+millis = (time.wSecond * 1000) + time.wMilliseconds;
+// Windows Includes Here
+#endif
+    return millis;
+}
+
+
+
+
 using namespace std;
 using namespace cv;
+
+//face detector(global variable)
+ CascadeClassifier face_cascade;
+
+ Mat detectAndDisplay( Mat frame )
+{
+  vector<Rect> faces;
+  Mat frame_gray;
+
+  cv::cvtColor( frame, frame_gray, CV_BGR2GRAY );
+  equalizeHist( frame_gray, frame_gray );
+
+  //-- Detect faces
+  face_cascade.detectMultiScale( frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );
+  cout<<faces.size()<<endl;
+  for( size_t i = 0; i < faces.size(); i++ )
+  {
+    Point center( faces[i].x + faces[i].width*0.5, faces[i].y + faces[i].height*0.5 );
+    ellipse( frame, center, Size( faces[i].width*0.5, faces[i].height*0.5), 0, 0, 360, Scalar( 255, 0, 255 ), 4, 8, 0 );
+  }
+return frame;
+ }
 
 
 //http://iroirous.blog.fc2.com/blog-entry-110.html
@@ -59,21 +125,39 @@ int main(int argc, char* argv[])
 	//arguments:video
 	bool isvideo=false;
 	VideoCapture video;
-	char imagename[30];
+	//char imagename[30];
+	string imagename;
 	//arguments:time
-	SYSTEMTIME time;
-	int lastframe_msec=0;
-	int frameduration=0;
+	long lastframe_msec=0;
+	long frameduration=0;
+	int skip_frame=(int)(LOADED_FILE_FPS/(int)(1000/200));
 
+	//arguments:file output
+	string output_path;
+	double outputFPS=30;
+	//サイズがそろってないと書き込めない
+	Size outputSize = Size(640,480);//cv::Size(1920,1080);
+	//VideoWriter writer(output_path, CV_FOURCC_DEFAULT, outputFPS, outputSize);
+	VideoWriter writer;
+	//VideoWriter writer(output_path, CV_FOURCC('I', '4', '2', '0'), outputFPS, outputSize);
 	if(argc>1){
-		strcpy(imagename,  argv[1]);}
-	else{
-		strcpy(imagename, "fushimi.avi");
+		//strcpy(imagename,  argv[1]);
+	imagename=string(argv[1]);
 	}
+	else{
+		//strcpy(imagename, "hoge.avi");
+		//strcpy(imagename, "redgate.avi");
+		imagename=string("redgate.avi");
+	}
+	output_path=imagename+"_feature.avi";
 	cout<<imagename<<endl;
+#ifdef WRITEVIDEO
+	writer.open(output_path, CV_FOURCC('M','J','P','G'), outputFPS, outputSize);
+#endif
+
 	// カメラを初期化
 	VideoCapture capture(0);
-	if(capture.isOpened()==NULL){
+	if(!capture.isOpened()){
 		cerr << "cannot find camera. Load video" << endl;
 		isvideo=true;
 		//動画の読み込み
@@ -84,7 +168,6 @@ int main(int argc, char* argv[])
 	}
 
 	// ウィンドウを生成
-	//cvNamedWindow("SURF");
 	namedWindow("SURF",CV_WINDOW_AUTOSIZE);
 	   
     // PCAの準備
@@ -95,28 +178,60 @@ int main(int argc, char* argv[])
     
     // 特徴量
     const int DIM=128; // 特徴量は128次元
-    const int SAMPLES=3000; // 1000サンプル
+#ifdef WRITEVIDEO
+    const int SAMPLES=30;//3000; // 1000サンプル
+#else
+	 const int SAMPLES=3000;
+#endif
     const int RDIM=3; // 圧縮後は3次元にする
     cv::Mat pca_src(SAMPLES, DIM, CV_32FC1);
     cv::Mat pca_result(DIM, DIM, CV_32FC1); // DIMとSAMPLESのうち小さい方
+
+
+#ifdef FACEDETECT
+	//if(!face_cascade.load("haarcascade_upperbody.xml")){
+	if(!face_cascade.load("haarcascade_frontalface_alt.xml")){
+		cout<<"cascade error"<<endl;
+		return -1;
+	}
+
+#endif
+
 
     
     // 3000 特徴点分のデータが溜まるまで待つ
     while (true) {
         num_frames += 1;
 		if(isvideo){
+#ifdef WRITEVIDEO
+			//書き込むときは毎フレームとる
 			video >> colorImage_beforeresize;
-			//フレームが空か、ボタンが押された時か一周したときに出る。
+#else
+			//5フレーム飛ばして6フレーム目を取る（5Hzで再生していて、もとの動画が30FPS）
+			for(int frame=1;frame<skip_frame;frame++){
+			video >> colorImage_beforeresize;
+			}
+#endif
+		//フレームが空か、ボタンが押された時か一周したときに出る。
 			if(colorImage_beforeresize.empty() || waitKey(30) >= 0 || video.get(CV_CAP_PROP_POS_AVI_RATIO) == 1){
 				return 0;
 			}
+
 		}else{
-        capture >> colorImage_beforeresize;
+			capture >> colorImage_beforeresize;
+			if(!capture.isOpened()){
+				cerr << "camera error"<<endl;
+				cvWaitKey(0);
+			}
 		}
+
 		//resize
+#ifdef WRITEVIDEO
+		colorImage=colorImage_beforeresize;
+#else
 		resize(colorImage_beforeresize, colorImage, cv::Size(320, 240),INTER_LINEAR);
-        
-        cvtColor(colorImage, grayImage, CV_BGR2GRAY);
+#endif
+        cv::cvtColor(colorImage, grayImage, CV_BGR2GRAY);
         SURF calc_surf = SURF(1000,2,2,true);
         calc_surf(grayImage, Mat(), kp_vec, desc_vec);
         vector<KeyPoint>::iterator it = kp_vec.begin(), it_end = kp_vec.end();
@@ -132,10 +247,15 @@ int main(int argc, char* argv[])
             }
             j += 1;
         }
+        imshow("SURF", colorImage);
+#ifdef WRITEVIDEO
+			//書き込む
+			writer.write(colorImage);
+#endif
+
         if(num_keypoints >= SAMPLES){
             break;
         }
-        imshow("SURF", colorImage);
         int key = cvWaitKey(30);
         if (key == 27) {
             break;
@@ -146,13 +266,20 @@ int main(int argc, char* argv[])
     pca_result=pca.project(pca_src);
     
 
-	//sending
+
 
     while (true) {
-		GetSystemTime(&time);
-		lastframe_msec=1000*time.wSecond+time.wMilliseconds;
+		lastframe_msec=getmillisec();
 		if(isvideo){
+#ifdef WRITEVIDEO
+			//書き込むときは毎フレームとる
 			video >> colorImage_beforeresize;
+#else
+			//5フレーム飛ばして6フレーム目を取る（5Hzで再生していて、もとの動画が30FPS）
+			for(int frame=1;frame<skip_frame;frame++){
+			video >> colorImage_beforeresize;
+			}
+#endif
 			//フレームが空か、ボタンが押された時か一周したときに出る。
 			if(colorImage_beforeresize.empty() || waitKey(30) >= 0 || video.get(CV_CAP_PROP_POS_AVI_RATIO) == 1){
 				return 0;
@@ -164,16 +291,18 @@ int main(int argc, char* argv[])
 				cvWaitKey(0);
 			}
 		}
-		cout<<"debug1"<<endl;
-		//resize
+#ifdef WRITEVIDEO
+		colorImage=colorImage_beforeresize;
+#else
 		resize(colorImage_beforeresize, colorImage, cv::Size(320, 240),INTER_LINEAR);
-        cvtColor(colorImage, grayImage, CV_BGR2GRAY);
+#endif
+        cv::cvtColor(colorImage, grayImage, CV_BGR2GRAY);
         SURF calc_surf = SURF(2000,2,2,true);
         
         calc_surf(grayImage, Mat(), kp_vec, desc_vec);
 		//sort according to size
 		vector<KeyPoint> kp_vec_sorted=kp_vec;
-		sort(kp_vec_sorted.begin(),kp_vec_sorted.end(),compare_response);
+		std::sort(kp_vec_sorted.begin(),kp_vec_sorted.end(),compare_response);
 		int threshould=0;
 
 		if((int)kp_vec_sorted.size()>9){
@@ -183,7 +312,7 @@ int main(int argc, char* argv[])
 		}
 
 
-		cout<<"debug2"<<endl;
+		//cout<<"debug2"<<endl;
 
         vector<KeyPoint>::iterator it = kp_vec.begin(), it_end = kp_vec.end();
         int j = 0;
@@ -247,9 +376,18 @@ int main(int argc, char* argv[])
 			}
             j += 1;
         }
-        imshow("SURF", colorImage);
+		
 
-		cout<<"debug3"<<endl;
+#ifdef FACEDETECT
+		colorImage=detectAndDisplay(colorImage);
+#endif
+        imshow("SURF", colorImage);
+		#ifdef WRITEVIDEO
+			//書き込む
+			writer.write(colorImage);
+		#endif
+
+		//cout<<"debug3"<<endl;
 		//write down descriptor:ternminal
 		p << osc::EndMessage
 			<< osc::EndBundle;
@@ -258,14 +396,13 @@ int main(int argc, char* argv[])
 		//cout<<p.Size()<<endl;
 
 		//time control
-		GetSystemTime(&time);
-		frameduration=1000*time.wSecond+time.wMilliseconds-lastframe_msec;
+		frameduration=getmillisec()-lastframe_msec;
 		if(frameduration<SEND_DURATION){
-			cout<<SEND_DURATION-frameduration<<endl;
-			if(SEND_DURATION-frameduration>200){//たまにめちゃ大きな値が入ることがある
+			//cout<<SEND_DURATION-frameduration<<endl;
+			if(SEND_DURATION-frameduration>200){//たまにめちゃ大きな値が入ることがある intの値があふれることが原因? lastframe_msecとframedurationをlong型に変更した
 				Sleep(200);
 			}else{
-				Sleep(SEND_DURATION-frameduration);
+				Sleep((unsigned int)SEND_DURATION-frameduration);
 			}
 		}
 
@@ -273,10 +410,10 @@ int main(int argc, char* argv[])
         if (key == 27) {
             break;
         }
-		cout<<1000*time.wSecond+time.wMilliseconds<<endl;
+		//cout<<1000*time.wSecond+time.wMilliseconds<<endl;
     }
     
-    
+    writer.release();
     return 0;
 }
 
