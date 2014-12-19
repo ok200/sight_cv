@@ -1,14 +1,15 @@
 // ok200.cpp : コンソール アプリケーションのエントリ ポイントを定義します。
 //
 
+#define PCA_CALIBRATE 0
+#define PCA_PATH "pca_result.xml"
+
 //stdafx.h is needed to capture video using opencv
 #include <iostream>
 #include <string>
 #include <algorithm>
 #include <vector>
-
 #include <unistd.h>
-
 #include <sys/time.h>
 
 #ifdef TARGET_OS_MAC
@@ -34,10 +35,10 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-#define ADDRESS "192.168.100.101"
+#define ADDRESS "127.0.0.1"
 #define PORT 12000
 #define OUTPUT_BUFFER_SIZE 10000//588//16384
-#define SENTPOINTS_NUM 10
+#define SENTPOINTS_NUM 20
 #define SEND_DURATION 200
 
 // http://brian.pontarelli.com/2009/01/05/getting-the-current-system-time-in-milliseconds-with-c/
@@ -74,7 +75,7 @@ int main(int argc, char* argv[])
 	//arguments:osc
 	UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, PORT ) );
 	//arguments:video
-	bool isvideo=false;
+	bool isvideo = true;
 	VideoCapture video;
 	char imagename[30];
     long time;
@@ -84,19 +85,18 @@ int main(int argc, char* argv[])
 	if(argc>1){
 		strcpy(imagename,  argv[1]);}
 	else{
-		strcpy(imagename, "fushimi.avi");
+		strcpy(imagename, "/Users/ryohei/gitrepos/ok200_cv/moviematrials/avi/city.avi");
 	}
-	cout<<imagename<<endl;
+	cout << imagename << endl;
 	// カメラを初期化
-	VideoCapture capture(0);
-	if(!capture.isOpened()){
+
+    VideoCapture capture(0);
+    if(!capture.isOpened() || isvideo){
 		cerr << "cannot find camera. Load video" << endl;
 		isvideo=true;
 		//動画の読み込み
-
         video.open(imagename);
 		if(!video.isOpened()) return -1;
-
 	}
 
 	// ウィンドウを生成
@@ -116,64 +116,79 @@ int main(int argc, char* argv[])
     cv::Mat pca_src(SAMPLES, DIM, CV_32FC1);
     cv::Mat pca_result(DIM, DIM, CV_32FC1); // DIMとSAMPLESのうち小さい方
 
-    
-    // 3000 特徴点分のデータが溜まるまで待つ
-    while (true) {
-        num_frames += 1;
-		if(isvideo){
-			video >> colorImage_beforeresize;
-			//フレームが空か、ボタンが押された時か一周したときに出る。
-			if(colorImage_beforeresize.empty() || waitKey(30) >= 0 || video.get(CV_CAP_PROP_POS_AVI_RATIO) == 1){
-				return 0;
-			}
-		}else{
-        capture >> colorImage_beforeresize;
-		}
-		//resize
-		resize(colorImage_beforeresize, colorImage, cv::Size(320, 240),INTER_LINEAR);
-        
-        cvtColor(colorImage, grayImage, CV_BGR2GRAY);
-        SURF calc_surf = SURF(1000,2,2,true);
-        calc_surf(grayImage, Mat(), kp_vec, desc_vec);
-        vector<KeyPoint>::iterator it = kp_vec.begin(), it_end = kp_vec.end();
-        int j = 0;
-        for(; it!=it_end; ++it) {
-            circle(colorImage, Point(it->pt.x, it->pt.y),
-                   saturate_cast<int>(it->size*0.25), Scalar(255,255,0));
-            if(num_keypoints < SAMPLES){
-                for(int i = 0; i < DIM; i++){
-                    ((float*)pca_src.data)[num_keypoints * pca_src.cols + i] = desc_vec[i + j * DIM];
+    cv::PCA pca(pca_src, cv::Mat(), CV_PCA_DATA_AS_ROW, 0);
+    pca_result = pca.project(pca_src);
+ 
+    if(PCA_CALIBRATE){
+        // 3000 特徴点分のデータが溜まるまで待つ
+        while (true) {
+            num_frames += 1;
+            if(isvideo){
+                video >> colorImage_beforeresize;
+                //フレームが空か、ボタンが押された時か一周したときに出る。
+                if(colorImage_beforeresize.empty() || waitKey(30) >= 0 || video.get(CV_CAP_PROP_POS_AVI_RATIO) == 1){
+                    return 0;
                 }
-                num_keypoints += 1;
+            }else{
+                capture >> colorImage_beforeresize;
             }
-            j += 1;
+            //resize
+            resize(colorImage_beforeresize, colorImage, cv::Size(320, 240),INTER_LINEAR);
+            
+            cvtColor(colorImage, grayImage, CV_BGR2GRAY);
+            SURF calc_surf = SURF(1000,2,2,true);
+            calc_surf(grayImage, Mat(), kp_vec, desc_vec);
+            vector<KeyPoint>::iterator it = kp_vec.begin(), it_end = kp_vec.end();
+            int j = 0;
+            for(; it!=it_end; ++it) {
+                circle(colorImage, Point(it->pt.x, it->pt.y),
+                       saturate_cast<int>(it->size*0.25), Scalar(255,255,0));
+                if(num_keypoints < SAMPLES){
+                    for(int i = 0; i < DIM; i++){
+                        ((float*)pca_src.data)[num_keypoints * pca_src.cols + i] = desc_vec[i + j * DIM];
+                    }
+                    num_keypoints += 1;
+                }
+                j += 1;
+            }
+            if(num_keypoints >= SAMPLES){
+                break;
+            }
+            imshow("SURF", colorImage);
+            cvWaitKey(30);
         }
-        if(num_keypoints >= SAMPLES){
-            break;
-        }
-        imshow("SURF", colorImage);
-        int key = cvWaitKey(30);
-        if (key == 27) {
-            break;
+        
+        char filename[] = PCA_PATH;	// file name
+        // Open File Storage
+        cv::FileStorage	cvfs(filename,CV_STORAGE_WRITE);
+        cv::WriteStructContext ws(cvfs, "mat_array", CV_NODE_SEQ);	// create node
+        cv::write(cvfs, "", pca.eigenvectors);
+    }else{
+
+        
+        char filename[] = PCA_PATH;	// file name
+        cv::FileStorage cvfs(filename,CV_STORAGE_READ);
+    
+        // (3)read data from file storage
+        cv::FileNode node(cvfs.fs, NULL); // Get Top Node
+        cv::FileNode fn = node[string("mat_array")];
+        
+        for(int i = 0; i < fn.size(); i++){
+            cv::read(fn[i], pca.eigenvectors);
         }
     }
     
-    cv::PCA pca(pca_src, cv::Mat(), CV_PCA_DATA_AS_ROW, 0);
-    pca_result=pca.project(pca_src);
-    
-
 	//sending
-
     while (true) {
         lastframe_msec=getmillisec();
 		if(isvideo){
 			video >> colorImage_beforeresize;
 			//フレームが空か、ボタンが押された時か一周したときに出る。
 			if(colorImage_beforeresize.empty() || waitKey(30) >= 0 || video.get(CV_CAP_PROP_POS_AVI_RATIO) == 1){
-				return 0;
+                exit(0);
 			}
 		}else{
-        capture >> colorImage_beforeresize;
+            capture >> colorImage_beforeresize;
 		}
 		//resize
 		resize(colorImage_beforeresize, colorImage, cv::Size(320, 240),INTER_LINEAR);
