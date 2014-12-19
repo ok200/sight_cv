@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0F3532C51A435DFA00EE535B /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F9F44FB31A3D472900A8910C /* main.cpp */; };
 		F9C4893E1A3C519300B003B8 /* libopencv_contrib.2.4.9.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F9C489371A3C519300B003B8 /* libopencv_contrib.2.4.9.dylib */; };
 		F9C4893F1A3C519300B003B8 /* libopencv_core.2.4.9.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F9C489381A3C519300B003B8 /* libopencv_core.2.4.9.dylib */; };
 		F9C489401A3C519300B003B8 /* libopencv_features2d.2.4.9.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F9C489391A3C519300B003B8 /* libopencv_features2d.2.4.9.dylib */; };
@@ -16,7 +17,6 @@
 		F9C489441A3C519300B003B8 /* libopencv_objdetect.2.4.9.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F9C4893D1A3C519300B003B8 /* libopencv_objdetect.2.4.9.dylib */; };
 		F9C489461A3C51AA00B003B8 /* libopencv_highgui.2.4.9.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F9C489451A3C51AA00B003B8 /* libopencv_highgui.2.4.9.dylib */; };
 		F9C489481A3C51E800B003B8 /* libopencv_imgproc.2.4.9.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F9C489471A3C51E800B003B8 /* libopencv_imgproc.2.4.9.dylib */; };
-		F9F44FB41A3D472900A8910C /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F9F44FB31A3D472900A8910C /* main.cpp */; };
 		F9F44FB61A3D4C1B00A8910C /* liboscpack.so.1.1.0 in Frameworks */ = {isa = PBXBuildFile; fileRef = F9F44FB51A3D4C1B00A8910C /* liboscpack.so.1.1.0 */; };
 /* End PBXBuildFile section */
 
@@ -73,7 +73,7 @@
 		F9C489451A3C51AA00B003B8 /* libopencv_highgui.2.4.9.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopencv_highgui.2.4.9.dylib; path = ../../../../../../usr/local/Cellar/opencv/2.4.9/lib/libopencv_highgui.2.4.9.dylib; sourceTree = "<group>"; };
 		F9C489471A3C51E800B003B8 /* libopencv_imgproc.2.4.9.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libopencv_imgproc.2.4.9.dylib; path = ../../../../../../usr/local/Cellar/opencv/2.4.9/lib/libopencv_imgproc.2.4.9.dylib; sourceTree = "<group>"; };
 		F9F44FB31A3D472900A8910C /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = main.cpp; path = ../../ok200_surf_camera/ok200_surf_camera/main.cpp; sourceTree = "<group>"; };
-		F9F44FB51A3D4C1B00A8910C /* liboscpack.so.1.1.0 */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = liboscpack.so.1.1.0; path = ../../../../../usr/local/lib/liboscpack.so.1.1.0; sourceTree = "<group>"; };
+		F9F44FB51A3D4C1B00A8910C /* liboscpack.so.1.1.0 */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = liboscpack.so.1.1.0; path = /usr/local/lib/liboscpack.so.1.1.0; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -225,7 +225,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F9F44FB41A3D472900A8910C /* main.cpp in Sources */,
+				0F3532C51A435DFA00EE535B /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -313,12 +313,15 @@
 					"$(inherited)",
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 					/usr/local/include,
+					/usr/include,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					/usr/local/lib,
 					/usr/local/Cellar/opencv/2.4.9/lib,
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx10.9;
 			};
 			name = Debug;
 		};
@@ -329,12 +332,15 @@
 					"$(inherited)",
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 					/usr/local/include,
+					/usr/include,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					/usr/local/lib,
 					/usr/local/Cellar/opencv/2.4.9/lib,
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx10.9;
 			};
 			name = Release;
 		};

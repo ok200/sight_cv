@@ -1,5 +1,5 @@
-﻿//win以外でコンパイルするときは次の行をコメントアウトしてください
-#include "stdafx.h"
+//win以外でコンパイルするときは次の行をコメントアウトしてください
+//#include "stdafx.h"
 #ifdef TARGET_OS_MAC
 #include <unistd.h>
 #include <sys/time.h>
@@ -18,12 +18,13 @@
 //windows is needed to use sort function of vector
 #include <concrt.h>
 #include <vector>
+#endif
 
 //opencv library:1.  add include directory (property setting) 2. add library directory (property setting)
 #include <opencv2/opencv.hpp>
-#include <opencv2/opencv_lib.hpp>
+//#include <opencv2/opencv_lib.hpp>
 //for surf http://y-takeda.tumblr.com/post/41255703041/opencv-sift-surf
-#include <opencv2\nonfree\features2d.hpp>
+#include <opencv2/nonfree/features2d.hpp>
 //#include <opencv/cv.h>
 //#include <opencv/highgui.h>
 //for soc http://www.naturalsoftware.jp/blog/7371
@@ -34,14 +35,12 @@
 //for video
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#endif
  
 //information about get-time
 //http://brian.pontarelli.com/2009/01/05/getting-the-current-system-time-in-milliseconds-with-c/
 
-#define ADDRESS "192.168.100.101"
+#define ADDRESS "127.0.0.1"
 #define PORT 12000
-//#define ADDRESS "127.0.0.1"
 //#define PORT 7000
 #define OUTPUT_BUFFER_SIZE 10000//588//16384
 #define SENTPOINTS_NUM 10
@@ -94,9 +93,9 @@ int main(int argc, char* argv[])
 	//arguments:osc
 	UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, PORT ) );
 	//arguments:video
-	bool isvideo=false;
+	bool isvideo=true;
 	VideoCapture video;
-	char imagename[30];
+	char imagename[200];
 	//arguments:time
 	long lastframe_msec=0;
 	long frameduration=0;
@@ -105,20 +104,24 @@ int main(int argc, char* argv[])
 	if(argc>1){
 		strcpy(imagename,  argv[1]);}
 	else{
-		strcpy(imagename, "MAH06380_ok.avi");
+		strcpy(imagename, "/Users/quolc/Downloads/moviematrials/avi/tonnel.avi");
 	}
 	cout<<imagename<<endl;
 	// カメラを初期化
 	VideoCapture capture(0);
-	if(!capture.isOpened()){
-		cerr << "cannot find camera. Load video" << endl;
-		isvideo=true;
-		//動画の読み込み
-
+    if (!isvideo) {
+        if(!capture.isOpened()){
+            cerr << "cannot find camera. Load video" << endl;
+            isvideo=false;
+        }
+    }
+    if (isvideo) {
         video.open(imagename);
-		if(!video.isOpened()) return -1;
-
-	}
+        if(!video.isOpened()) {
+            cerr << "video not opened!" << endl;
+            return -1;
+        }
+    }
 
 	// ウィンドウを生成
 	namedWindow("SURF",CV_WINDOW_AUTOSIZE);
@@ -143,23 +146,28 @@ int main(int argc, char* argv[])
         num_frames += 1;
 		if(isvideo){
 			//5フレーム飛ばして6フレーム目を取る（5Hzで再生していて、もとの動画が30FPS）
-			for(int frame=1;frame<skip_frame;frame++){
-			video >> colorImage_beforeresize;
+            for(int frame=1;frame<skip_frame;frame++){
+                video >> colorImage_beforeresize;
 			}
 			//フレームが空か、ボタンが押された時か一周したときに出る。
-			if(colorImage_beforeresize.empty() || waitKey(30) >= 0 || video.get(CV_CAP_PROP_POS_AVI_RATIO) == 1){
+            if(colorImage_beforeresize.empty() || waitKey(30) >= 0 || video.get(CV_CAP_PROP_POS_AVI_RATIO) == 1){
+                double f = video.get(CV_CAP_PROP_FOURCC);
+                char* fourcc = (char*) (&f); // reinterpret_cast
+                cerr << colorImage_beforeresize.empty() << ", " << fourcc << endl;
 				return 0;
 			}
 		}else{
 			capture >> colorImage_beforeresize;
-			if(capture.isOpened()==NULL){
+			if(!capture.isOpened()){
 				cerr << "camera error"<<endl;
 				cvWaitKey(0);
 			}
 		}
+        cerr << "before resize" << endl;
 		//resize
 		resize(colorImage_beforeresize, colorImage, cv::Size(320, 240),INTER_LINEAR);
-		//resize(colorImage_beforeresize, colorImage, cv::Size(640, 480),INTER_LINEAR);
+        //resize(colorImage_beforeresize, colorImage, cv::Size(640, 480),INTER_LINEAR);
+        cerr << "after resize" << endl;
         
         cvtColor(colorImage, grayImage, CV_BGR2GRAY);
         SURF calc_surf = SURF(1000,2,2,true);
@@ -194,6 +202,7 @@ int main(int argc, char* argv[])
 
 
     while (true) {
+        cerr << "hoge" << endl;
 		lastframe_msec=getmillisec();
 		if(isvideo){
 			//5フレーム飛ばして6フレーム目を取る（5Hzで再生していて、もとの動画が30FPS）
@@ -297,7 +306,7 @@ int main(int argc, char* argv[])
         }
         imshow("SURF", colorImage);
 
-		//cout<<"debug3"<<endl;
+		cout<<"debug3"<<endl;
 		//write down descriptor:ternminal
 		p << osc::EndMessage
 			<< osc::EndBundle;
@@ -310,9 +319,9 @@ int main(int argc, char* argv[])
 		if(frameduration<SEND_DURATION){
 			//cout<<SEND_DURATION-frameduration<<endl;
 			if(SEND_DURATION-frameduration>200){//たまにめちゃ大きな値が入ることがある intの値があふれることが原因? lastframe_msecとframedurationをlong型に変更した
-				Sleep(200);
+//				sleep(200);
 			}else{
-				Sleep((unsigned int)SEND_DURATION-frameduration);
+//				sleep((unsigned int)SEND_DURATION-frameduration);
 			}
 		}
 
