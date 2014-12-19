@@ -51,8 +51,9 @@
 #define SENTPOINTS_NUM 10
 #define SEND_DURATION 200
 #define LOADED_FILE_FPS 30
-#define WRITEVIDEO
+//#define WRITEVIDEO
 #define FACEDETECT
+//#define YELLOWDETECT
 
 // response comparison, for list sorting
 bool compare_response(cv::KeyPoint first, cv::KeyPoint second)
@@ -297,8 +298,9 @@ int main(int argc, char* argv[])
 		resize(colorImage_beforeresize, colorImage, cv::Size(320, 240),INTER_LINEAR);
 #endif
         cv::cvtColor(colorImage, grayImage, CV_BGR2GRAY);
-        SURF calc_surf = SURF(2000,2,2,true);
-        
+        //SURF calc_surf = SURF(2000,2,2,true);
+		SURF calc_surf = SURF(1000,2,2,true);
+        //SURF calc_surf = SURF(600,2,2,true);
         calc_surf(grayImage, Mat(), kp_vec, desc_vec);
 		//sort according to size
 		vector<KeyPoint> kp_vec_sorted=kp_vec;
@@ -339,15 +341,40 @@ int main(int argc, char* argv[])
             }
             cv::Mat result(1, DIM, CV_32FC1);
             // プロジェクション
-            result = pca.project(m1);
-            //cout << fixed << ((float*)result.data)[0] << endl;
-            
-            circle(colorImage, Point(it->pt.x, it->pt.y),
+            result = pca.project(m1);          
+			//default
+            /*circle(colorImage, Point(it->pt.x, it->pt.y),
                    saturate_cast<int>(it->size*0.25), Scalar(
                                                              floor(((float*)result.data)[0] * 128 + 128),
                                                              floor(((float*)result.data)[1] * 128 + 128),
                                                              floor(((float*)result.data)[2] * 128 + 128)
-                                                             ));
+                                                             ));*/
+			//if((rand()/(float)RAND_MAX)<0.1)
+			cv::Mat3b dotImg = colorImage;
+			cv::Vec3b bgr = dotImg(cv::Point(it->pt.x,it->pt.y));
+
+#ifdef YELLOWDETECT
+			//ヒューリスティックな設定（点字ブロック）
+			if(bgr[2]>150&&(float)bgr[2]/bgr[1]<1.2&&(float)bgr[2]/bgr[1]>0.8){
+#endif
+			//circle: bgr
+				circle(colorImage, Point(it->pt.x, it->pt.y),
+					   saturate_cast<int>(it->size*0.25), Scalar(
+																 bgr[0],
+																 bgr[1],
+																 bgr[2]
+																 ),-1,CV_AA);
+			//補色
+			int cint=min(min(bgr[0],bgr[1]),bgr[2])+max(max(bgr[0],bgr[1]),bgr[2]);
+				circle(colorImage, Point(it->pt.x, it->pt.y),
+					   saturate_cast<int>(it->size*0.25), Scalar(
+																 cint-bgr[0],
+																 cint-bgr[1],
+																 cint-bgr[2]
+																 ),2);		
+#ifdef YELLOWDETECT
+			}
+#endif
             // ここで ((float*)result.data)[0]) でPCA射影結果の 0 番目にアクセスできる (値域は -1 〜 1)
 
 			//write down descriptor:data
@@ -414,7 +441,9 @@ int main(int argc, char* argv[])
     }
     
     writer.release();
-    return 0;
+	video.release();
+	capture.release();
+	return 0;
 }
 
 
