@@ -1,5 +1,11 @@
+
 //win以外でコンパイルするときは次の行をコメントアウトしてください
-#include "stdafx.h"
+
+// #include "stdafx.h"
+
+#include <iostream>
+#include <string>
+
 #ifdef TARGET_OS_MAC
 #include <unistd.h>
 #include <sys/time.h>
@@ -9,8 +15,6 @@
 #elif defined WIN32 || defined _WIN64
 // Windows Includes Here
 //stdafx.h is needed to capture video using opencv
-#include <iostream>
-#include <string>
 //algorithm is needed to use min()
 #include <algorithm>
 //windows is needed to use time function
@@ -20,6 +24,8 @@
 #include <opencv2/opencv_lib.hpp>
 #endif
 
+#define PCA_CALIBRATE
+
 //opencv library:1.  add include directory (property setting) 2. add library directory (property setting)
 #include <opencv2/opencv.hpp>
 //for surf http://y-takeda.tumblr.com/post/41255703041/opencv-sift-surf
@@ -27,16 +33,13 @@
 //for soc http://www.naturalsoftware.jp/blog/7371
 //osc library:1.  add include directory (property setting) 2. add library directory (additional library directory in linker setting)
 //3: add ws2_32.lib, winmm.lib, oscpack.lib to additional dependent file (additional library directory in linker setting)
-#include "osc/OscOutboundPacketStream.h"
-#include "ip/UdpSocket.h"
+#include <oscpack/osc/OscOutboundPacketStream.h>
+#include <oscpack/ip/UdpSocket.h>
 //for video
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 //for face tracking
 #include <opencv2/objdetect/objdetect.hpp>
-#endif
- 
-
 
 //information about get-time
 //http://brian.pontarelli.com/2009/01/05/getting-the-current-system-time-in-milliseconds-with-c/
