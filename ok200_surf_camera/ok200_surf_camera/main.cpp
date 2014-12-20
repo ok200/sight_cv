@@ -1,5 +1,31 @@
 //win以外でコンパイルするときは次の行をコメントアウトしてください
-#include "stdafx.h"
+//#include "stdafx.h"
+
+
+//opencv library:1.  add include directory (property setting) 2. add library directory (property setting)
+#include <opencv2/opencv.hpp>
+//for surf http://y-takeda.tumblr.com/post/41255703041/opencv-sift-surf
+#include <opencv2/nonfree/features2d.hpp>
+//#include <opencv/cv.h>
+//#include <opencv/highgui.h>
+//for soc http://www.naturalsoftware.jp/blog/7371
+//osc library:1.  add include directory (property setting) 2. add library directory (additional library directory in linker setting)
+//3: add ws2_32.lib, winmm.lib, oscpack.lib to additional dependent file (additional library directory in linker setting)
+#include <oscpack/osc/OscOutboundPacketStream.h>
+#include <oscpack/ip/UdpSocket.h>
+//for video
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+//for face tracking
+#include <opencv2/objdetect/objdetect.hpp>
+
+#include <iostream>
+#include <string>
+//algorithm is needed to use min()
+#include <algorithm>
+#include <vector>
+
+
 #ifdef TARGET_OS_MAC
 #include <unistd.h>
 #include <sys/time.h>
@@ -9,36 +35,16 @@
 #elif defined WIN32 || defined _WIN64
 // Windows Includes Here
 //stdafx.h is needed to capture video using opencv
-#include <iostream>
-#include <string>
-//algorithm is needed to use min()
-#include <algorithm>
 //windows is needed to use time function
 #include <windows.h>
 //windows is needed to use sort function of vector
 #include <concrt.h>
-#include <vector>
 
-//opencv library:1.  add include directory (property setting) 2. add library directory (property setting)
-#include <opencv2/opencv.hpp>
 #include <opencv2/opencv_lib.hpp>
-//for surf http://y-takeda.tumblr.com/post/41255703041/opencv-sift-surf
-#include <opencv2\nonfree\features2d.hpp>
-//#include <opencv/cv.h>
-//#include <opencv/highgui.h>
-//for soc http://www.naturalsoftware.jp/blog/7371
-//osc library:1.  add include directory (property setting) 2. add library directory (additional library directory in linker setting)
-//3: add ws2_32.lib, winmm.lib, oscpack.lib to additional dependent file (additional library directory in linker setting)
-#include "osc/OscOutboundPacketStream.h"
-#include "ip/UdpSocket.h"
-//for video
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-//for face tracking
-#include <opencv2/objdetect/objdetect.hpp>
 #endif
  
-
+using namespace std;
+using namespace cv;
 
 //information about get-time
 //http://brian.pontarelli.com/2009/01/05/getting-the-current-system-time-in-milliseconds-with-c/
@@ -54,6 +60,10 @@
 //#define WRITEVIDEO
 #define FACEDETECT
 //#define YELLOWDETECT
+
+// 1: WRITE TO FILE, 2: READ FROM FILE
+#define PCA_CALIBRATE 1
+#define PCA_PATH "pca_result.xml"
 
 // response comparison, for list sorting
 bool compare_response(cv::KeyPoint first, cv::KeyPoint second)
@@ -81,11 +91,19 @@ millis = (time.wSecond * 1000) + time.wMilliseconds;
     return millis;
 }
 
+void msleep(int msec){
+#ifdef TARGET_OS_MAC
+    
+#elif defined __linux__
+#error Can't be compiled on Linux yet
+#elif defined WIN32 || defined _WIN64
+    Sleep(msec);
+#endif
+    
+}
 
 
 
-using namespace std;
-using namespace cv;
 
 //face detector(global variable)
  CascadeClassifier face_cascade;
@@ -148,7 +166,7 @@ int main(int argc, char* argv[])
 	else{
 		//strcpy(imagename, "hoge.avi");
 		//strcpy(imagename, "redgate.avi");
-		imagename=string("redgate.avi");
+		imagename=string("/Users/ryohei/gitrepos/ok200_cv/moviematrials/avi/tonnel.avi");
 	}
 	output_path=imagename+"_feature.avi";
 	cout<<imagename<<endl;
@@ -191,16 +209,18 @@ int main(int argc, char* argv[])
 
 #ifdef FACEDETECT
 	//if(!face_cascade.load("haarcascade_upperbody.xml")){
-	if(!face_cascade.load("haarcascade_frontalface_alt.xml")){
+	if(!face_cascade.load("/Users/ryohei/gitrepos/ok200_cv/haarcascade_frontalface_alt.xml")){
 		cout<<"cascade error"<<endl;
 		return -1;
 	}
 
 #endif
 
-
+    cv::PCA pca;
     
     // 3000 特徴点分のデータが溜まるまで待つ
+    if(PCA_CALIBRATE){
+
     while (true) {
         num_frames += 1;
 		if(isvideo){
@@ -262,10 +282,26 @@ int main(int argc, char* argv[])
             break;
         }
     }
-    
-    cv::PCA pca(pca_src, cv::Mat(), CV_PCA_DATA_AS_ROW, 0);
+    pca = PCA(pca_src, cv::Mat(), CV_PCA_DATA_AS_ROW, 0);
     pca_result=pca.project(pca_src);
-    
+        char filename[] = PCA_PATH;	// file name
+        // Open File Storage
+        cv::FileStorage	cvfs(filename,CV_STORAGE_WRITE);
+        cv::WriteStructContext ws(cvfs, "mat_array", CV_NODE_SEQ);	// create node
+        cv::write(cvfs, "", pca.eigenvectors);
+    }else{
+        pca = PCA(pca_src, cv::Mat(), CV_PCA_DATA_AS_ROW, 0);
+        char filename[] = PCA_PATH;	// file name
+        cv::FileStorage cvfs(filename,CV_STORAGE_READ);
+        
+        // (3)read data from file storage
+        cv::FileNode node(cvfs.fs, NULL); // Get Top Node
+        cv::FileNode fn = node[string("mat_array")];
+        
+        for(int i = 0; i < fn.size(); i++){
+            cv::read(fn[i], pca.eigenvectors);
+        }
+    }
 
 
 
@@ -287,7 +323,7 @@ int main(int argc, char* argv[])
 			}
 		}else{
         capture >> colorImage_beforeresize;
-			if(capture.isOpened()==NULL){
+			if(!capture.isOpened()){
 				cerr << "camera error"<<endl;
 				cvWaitKey(0);
 			}
@@ -427,9 +463,9 @@ int main(int argc, char* argv[])
 		if(frameduration<SEND_DURATION){
 			//cout<<SEND_DURATION-frameduration<<endl;
 			if(SEND_DURATION-frameduration>200){//たまにめちゃ大きな値が入ることがある intの値があふれることが原因? lastframe_msecとframedurationをlong型に変更した
-				Sleep(200);
+				msleep(200);
 			}else{
-				Sleep((unsigned int)SEND_DURATION-frameduration);
+				msleep((unsigned int)SEND_DURATION-frameduration);
 			}
 		}
 

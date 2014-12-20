@@ -33,6 +33,25 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F92A494C1A45149E001329C9 /* haarcascade_frontalface_alt.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = haarcascade_frontalface_alt.xml; sourceTree = "<group>"; };
+		F92A494F1A4514B2001329C9 /* city.avi */ = {isa = PBXFileReference; lastKnownFileType = video.avi; path = city.avi; sourceTree = "<group>"; };
+		F92A49501A4514B2001329C9 /* green.avi */ = {isa = PBXFileReference; lastKnownFileType = video.avi; path = green.avi; sourceTree = "<group>"; };
+		F92A49511A4514B2001329C9 /* mountain.avi */ = {isa = PBXFileReference; lastKnownFileType = video.avi; path = mountain.avi; sourceTree = "<group>"; };
+		F92A49521A4514B2001329C9 /* shore.avi */ = {isa = PBXFileReference; lastKnownFileType = video.avi; path = shore.avi; sourceTree = "<group>"; };
+		F92A49531A4514B2001329C9 /* sunset.avi */ = {isa = PBXFileReference; lastKnownFileType = video.avi; path = sunset.avi; sourceTree = "<group>"; };
+		F92A49541A4514B2001329C9 /* tonnel.avi */ = {isa = PBXFileReference; lastKnownFileType = video.avi; path = tonnel.avi; sourceTree = "<group>"; };
+		F92A49561A4514B2001329C9 /* tonnel.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = tonnel.mov; sourceTree = "<group>"; };
+		F92A49571A4514B2001329C9 /* Untitled.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = Untitled.mov; sourceTree = "<group>"; };
+		F92A49581A4514B2001329C9 /* Untitled2.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = Untitled2.mov; sourceTree = "<group>"; };
+		F92A49591A4514B2001329C9 /* untitled3.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = untitled3.mov; sourceTree = "<group>"; };
+		F92A495A1A4514B2001329C9 /* Untitled4.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = Untitled4.mov; sourceTree = "<group>"; };
+		F92A495B1A4514B2001329C9 /* Untitled5.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = Untitled5.mov; sourceTree = "<group>"; };
+		F92A495D1A4514B2001329C9 /* tonnel.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = tonnel.mp4; sourceTree = "<group>"; };
+		F92A495E1A4514B2001329C9 /* Untitled.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = Untitled.mp4; sourceTree = "<group>"; };
+		F92A495F1A4514B2001329C9 /* Untitled2.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = Untitled2.mp4; sourceTree = "<group>"; };
+		F92A49601A4514B2001329C9 /* untitled3.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = untitled3.mp4; sourceTree = "<group>"; };
+		F92A49611A4514B2001329C9 /* Untitled4.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = Untitled4.mp4; sourceTree = "<group>"; };
+		F92A49621A4514B2001329C9 /* Untitled5.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = Untitled5.mp4; sourceTree = "<group>"; };
 		F9C4890D1A3C494900B003B8 /* surf */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = surf; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9C489181A3C507500B003B8 /* cl.command.1.tlog */ = {isa = PBXFileReference; lastKnownFileType = text; path = cl.command.1.tlog; sourceTree = "<group>"; };
 		F9C489191A3C507500B003B8 /* CL.read.1.tlog */ = {isa = PBXFileReference; lastKnownFileType = text; path = CL.read.1.tlog; sourceTree = "<group>"; };
@@ -97,6 +116,56 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		F92A494D1A4514B2001329C9 /* moviematrials */ = {
+			isa = PBXGroup;
+			children = (
+				F92A494E1A4514B2001329C9 /* avi */,
+				F92A49551A4514B2001329C9 /* mov */,
+				F92A495C1A4514B2001329C9 /* mp4 */,
+			);
+			name = moviematrials;
+			path = ../../moviematrials;
+			sourceTree = "<group>";
+		};
+		F92A494E1A4514B2001329C9 /* avi */ = {
+			isa = PBXGroup;
+			children = (
+				F92A494F1A4514B2001329C9 /* city.avi */,
+				F92A49501A4514B2001329C9 /* green.avi */,
+				F92A49511A4514B2001329C9 /* mountain.avi */,
+				F92A49521A4514B2001329C9 /* shore.avi */,
+				F92A49531A4514B2001329C9 /* sunset.avi */,
+				F92A49541A4514B2001329C9 /* tonnel.avi */,
+			);
+			path = avi;
+			sourceTree = "<group>";
+		};
+		F92A49551A4514B2001329C9 /* mov */ = {
+			isa = PBXGroup;
+			children = (
+				F92A49561A4514B2001329C9 /* tonnel.mov */,
+				F92A49571A4514B2001329C9 /* Untitled.mov */,
+				F92A49581A4514B2001329C9 /* Untitled2.mov */,
+				F92A49591A4514B2001329C9 /* untitled3.mov */,
+				F92A495A1A4514B2001329C9 /* Untitled4.mov */,
+				F92A495B1A4514B2001329C9 /* Untitled5.mov */,
+			);
+			path = mov;
+			sourceTree = "<group>";
+		};
+		F92A495C1A4514B2001329C9 /* mp4 */ = {
+			isa = PBXGroup;
+			children = (
+				F92A495D1A4514B2001329C9 /* tonnel.mp4 */,
+				F92A495E1A4514B2001329C9 /* Untitled.mp4 */,
+				F92A495F1A4514B2001329C9 /* Untitled2.mp4 */,
+				F92A49601A4514B2001329C9 /* untitled3.mp4 */,
+				F92A49611A4514B2001329C9 /* Untitled4.mp4 */,
+				F92A49621A4514B2001329C9 /* Untitled5.mp4 */,
+			);
+			path = mp4;
+			sourceTree = "<group>";
+		};
 		F9C489041A3C494900B003B8 = {
 			isa = PBXGroup;
 			children = (
@@ -126,6 +195,8 @@
 		F9C4890F1A3C494900B003B8 /* surf */ = {
 			isa = PBXGroup;
 			children = (
+				F92A494D1A4514B2001329C9 /* moviematrials */,
+				F92A494C1A45149E001329C9 /* haarcascade_frontalface_alt.xml */,
 				F9F44FB31A3D472900A8910C /* main.cpp */,
 				F9C489171A3C507500B003B8 /* Debug */,
 			);
